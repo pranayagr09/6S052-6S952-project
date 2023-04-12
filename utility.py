@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import itertools
 
 def calc_sharpe(wts, ret):
 	portfolio_ret = ret.mul(weights).sum(1)
@@ -53,17 +54,24 @@ def wts_combinations(assets = 5, max_wt = 0.5, step_size = 0.05):
     
     return all_combinations
 
-filepath = 'data.xlsx'
-etf_ret, mkt_factor_data = read_data(filepath)
+def prepare_dataset(filepath = 'data.xlsx'):
+	etf_ret, mkt_factor_data = read_data(filepath)
 
-all_combinations = wts_combinations()
+	all_combinations = wts_combinations()
 
-dataset = []
-for date in etf_ret.index[:-700]:
-    mkt_params = mkt_factor_data.loc[date].to_numpy()
-    future_etf_ret = etf_ret.loc[date+pd.offsets.BDay(1) : date+pd.offsets.BDay(21)]
-    
-    for wts in all_combinations:
-        params = np.concatenate((wts, mkt_params))
-        future_sharpe = calc_sharpe(wts, future_etf_ret)
-        dataset.append((params, future_sharpe))
+	dataset = []
+	for date in etf_ret.index[:-700]: # skipping last 700 dates for test
+	    mkt_params = mkt_factor_data.loc[date].to_numpy()
+	    future_etf_ret = etf_ret.loc[date+pd.offsets.BDay(1) : date+pd.offsets.BDay(21)]
+	    
+	    for wts in all_combinations:
+	        params = np.concatenate((wts, mkt_params))
+	        future_sharpe = calc_sharpe(wts, future_etf_ret)
+	        dataset.append((params, future_sharpe))
+
+	# saving dataset as a compressed file
+	np.savez_compressed('dataset_compressed.npz', arr1=dataset)
+
+
+loaded_dataset = np.load('dataset_compressed.npz', allow_pickle=True)['arr1']
+print(len(loaded_dataset))
